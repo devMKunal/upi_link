@@ -1,39 +1,110 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# upi_link
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+[![pub package](https://img.shields.io/pub/v/upi_link.svg)](https://pub.dev/packages/upi_link)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/tools/pub/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
+Build and parse UPI payment links (`upi://pay?...`) in pure Dart.
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+`upi_link` turns payment details into a spec-correct UPI link and reads one
+back. It has no dependencies and no Flutter requirement, so it works in Flutter
+apps, Dart backends that generate payment links, and CLI tools.
 
 ## Features
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+- **Build** a `upi://pay` link from typed, named parameters.
+- **Parse** a link (from a QR code or deep link) back into a `UpiLink`.
+- **Round-trip safe:** `UpiLink.parse(link.toString()) == link`.
+- **Exact amounts:** amounts are decimal strings with at most 2 places, never
+  `double`, so no rounding error can reach a payment.
+- **Spec-correct encoding:** spaces become `%20`, not `+`. Dart's
+  `Uri(queryParameters: ...)` writes `+`, which some UPI apps display literally.
+- **Fails early:** invalid input throws when you build the link, naming the
+  field, instead of failing inside the payer's UPI app.
 
-## Getting started
+## Install
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+```sh
+dart pub add upi_link
+```
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
+### Build a link
 
 ```dart
-const like = 'sample';
+import 'package:upi_link/upi_link.dart';
+
+final link = UpiLink(
+  payeeAddress: 'chaipoint@okaxis',
+  payeeName: 'Chai Point',
+  amount: '149.50',
+  transactionNote: 'Order 42',
+  transactionRef: 'ORD-42',
+);
+
+print(link);
+// upi://pay?pa=chaipoint@okaxis&pn=Chai%20Point&am=149.50&cu=INR&tn=Order%2042&tr=ORD-42
 ```
 
-## Additional information
+Pass `link.toString()` to a QR code widget, or `link.toUri()` to
+[`url_launcher`](https://pub.dev/packages/url_launcher) to open the payer's UPI
+app.
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+### Parse a link
+
+```dart
+final link = UpiLink.parse(scannedText); // throws FormatException if invalid
+print(link.payeeName);
+print(link.amount);
+
+final maybe = UpiLink.tryParse(scannedText); // null if invalid
+```
+
+### Handle invalid input
+
+```dart
+try {
+  UpiLink(payeeAddress: 'chaipoint', payeeName: 'Chai Point');
+} on UpiLinkException catch (e) {
+  print(e.field);   // payeeAddress
+  print(e.message); // Expected a UPI address like "name@bank", got "chaipoint"
+}
+```
+
+## Supported parameters
+
+| Dart field        | Spec key | Rules                                           |
+| ----------------- | -------- | ----------------------------------------------- |
+| `payeeAddress`    | `pa`     | Required. `name@handle`                         |
+| `payeeName`       | `pn`     | Required. Not blank                             |
+| `amount`          | `am`     | Positive, at most 2 decimal places, e.g. `'149.50'` |
+| `transactionNote` | `tn`     | Not blank when given                            |
+| `transactionRef`  | `tr`     | Not blank when given                            |
+| `merchantCode`    | `mc`     | Exactly 4 digits                                |
+| `transactionId`   | `tid`    | Not blank when given                            |
+| `referenceUrl`    | `url`    | Absolute `http`/`https` URL                     |
+
+`cu=INR` is always written. When parsing, `cu` may be absent but must be `INR`
+if present.
+
+## Strict parsing
+
+`UpiLink.parse` rejects anything outside the table above, including unknown or
+repeated keys. Many bank-issued merchant QR codes carry extra keys such as
+`mode`, `orgid`, `sign` or `purpose`, so this version will reject them. Support
+for those keys may be added later; doing so will not break existing code.
+
+## How it compares
+
+Most UPI packages on pub.dev are Flutter plugins that launch UPI apps. They need
+Flutter and platform code. `upi_link` only builds and parses the link, so you
+can use it on its own or together with any of them.
+
+## Contributing
+
+Issues and pull requests are welcome at
+[github.com/devMKunal/upi_link](https://github.com/devMKunal/upi_link/issues).
+
+## License
+
+MIT. See [LICENSE](LICENSE).
