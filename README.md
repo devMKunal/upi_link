@@ -1,6 +1,7 @@
 # upi_link
 
 [![pub package](https://img.shields.io/pub/v/upi_link.svg)](https://pub.dev/packages/upi_link)
+[![CI](https://github.com/devMKunal/upi_link/actions/workflows/ci.yml/badge.svg)](https://github.com/devMKunal/upi_link/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Build and parse UPI payment links (`upi://pay?...`) in pure Dart.
