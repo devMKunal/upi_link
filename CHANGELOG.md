@@ -1,3 +1,8 @@
+## 0.1.1
+
+- Add CI badge to the README. No API changes.
+- First release published automatically from GitHub Actions.
+
 ## 0.1.0
 
 - Initial release.
