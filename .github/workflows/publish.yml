@@ -1,0 +1,16 @@
+# Publishes to pub.dev when a tag like v0.1.1 is pushed.
+# Uses GitHub's OIDC token, so no pub.dev credentials are stored in the repo.
+# Requires "Automated publishing" to be enabled on the pub.dev admin page
+# for repository devMKunal/upi_link with tag pattern v{{version}}.
+name: Publish to pub.dev
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+
+jobs:
+  publish:
+    permissions:
+      id-token: write # lets pub.dev verify this run came from this repo
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
