@@ -1,14 +1,11 @@
 name: upi_link
-description: A starting point for Dart libraries or applications.
-version: 1.0.0
-# repository: https://github.com/my_org/my_repo
+description: Build and parse UPI payment links (upi://pay) in pure Dart, with validation and exact amounts.
+version: 0.1.0
+repository: https://github.com/devMKunal/upi_link
+issue_tracker: https://github.com/devMKunal/upi_link/issues
 
 environment:
-  sdk: ^3.14.1
-
-# Add regular dependencies here.
-dependencies:
-  # path: ^1.9.0
+  sdk: ^3.0.0
 
 dev_dependencies:
   lints: ^6.0.0

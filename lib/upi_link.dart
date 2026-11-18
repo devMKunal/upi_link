@@ -1,8 +1,7 @@
-/// Support for doing something awesome.
+/// Build and parse UPI payment links (`upi://pay`) in pure Dart.
 ///
-/// More dartdocs go here.
+/// Start with [UpiLink].
 library;
 
-export 'src/upi_link_base.dart';
-
-// TODO: Export any libraries intended for clients of this package.
+export 'src/upi_link.dart' show UpiLink;
+export 'src/upi_link_exception.dart' show UpiLinkException;
