@@ -3,6 +3,12 @@ description: Build and parse UPI payment links (upi://pay) in pure Dart, with va
 version: 0.1.0
 repository: https://github.com/devMKunal/upi_link
 issue_tracker: https://github.com/devMKunal/upi_link/issues
+topics:
+  - upi
+  - payments
+  - india
+  - deep-linking
+  - parser
 
 environment:
   sdk: ^3.0.0
