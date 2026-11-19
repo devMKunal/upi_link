@@ -1,6 +1,6 @@
 name: upi_link
 description: Build and parse UPI payment links (upi://pay) in pure Dart, with validation and exact amounts.
-version: 0.1.1
+version: 0.1.2
 repository: https://github.com/devMKunal/upi_link
 issue_tracker: https://github.com/devMKunal/upi_link/issues
 topics:
