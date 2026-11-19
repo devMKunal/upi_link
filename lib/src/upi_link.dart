@@ -65,6 +65,9 @@ final class UpiLink {
   ///   `pay` are ignored, and surrounding whitespace is trimmed,
   /// * HTML-escaped separators (`&amp;`), common when a link is copied
   ///   from a web page, are read as `&`,
+  /// * a segment without `=` after another parameter is read as part of
+  ///   that parameter's value, so an unencoded `&` in a name
+  ///   (`pn=A&B%20Traders`) gives `A&B Traders`,
   /// * values may encode spaces as `%20` or `+`.
   ///
   /// Throws a [FormatException] when:
@@ -107,8 +110,19 @@ final class UpiLink {
     final values = <String, String>{};
     final extras = <String, String>{};
     if (uri.hasQuery) {
+      // Some generators leave a literal `&` inside a value
+      // (`pn=A&B%20Traders`). A segment without `=` that follows a
+      // parameter is treated as the rest of that parameter's value.
+      final segments = <String>[];
       for (final segment in uri.query.split('&')) {
         if (segment.isEmpty) continue;
+        if (!segment.contains('=') && segments.isNotEmpty) {
+          segments.last = '${segments.last}%26$segment';
+        } else {
+          segments.add(segment);
+        }
+      }
+      for (final segment in segments) {
         final eq = segment.indexOf('=');
         final rawKey = eq < 0 ? segment : segment.substring(0, eq);
         final rawValue = eq < 0 ? '' : segment.substring(eq + 1);

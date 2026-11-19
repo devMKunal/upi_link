@@ -307,8 +307,17 @@ void main() {
       expect(link.transactionNote, isNull);
     });
 
-    test('keeps an extra key without a value', () {
-      final link = UpiLink.parse('upi://pay?pa=a@ybl&pn=A&flag');
+    test('reads an unencoded & inside a value', () {
+      final link = UpiLink.parse(
+        'upi://pay?pa=a@ybl&pn=A&B%20Traders&mode=02&tn=x&y&z',
+      );
+      expect(link.payeeName, 'A&B Traders');
+      expect(link.transactionNote, 'x&y&z');
+      expect(link.extraParameters, {'mode': '02'});
+    });
+
+    test('keeps a leading key without a value as an extra', () {
+      final link = UpiLink.parse('upi://pay?flag&pa=a@ybl&pn=A');
       expect(link.extraParameters, {'flag': ''});
     });
 

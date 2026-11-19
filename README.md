@@ -113,12 +113,16 @@ print(link.extraParameters); // {mode: 02, purpose: 00}
 | `&&` or a trailing `&` | Ignored |
 | `upi://pay/?...` | Same as `upi://pay?...` |
 | `&amp;` (copied from HTML) | Read as `&` |
+| `pn=A&B%20Co` (unencoded `&`) | Name `A&B Co` |
 | Leading/trailing whitespace | Trimmed |
 
 It still throws a `FormatException` for links it cannot read safely: a missing
 `pa` or `pn`, a currency other than INR, a supported key repeated with different
 values, malformed percent-encoding, or an invalid address, amount, merchant
 code or URL.
+
+Known limitations, and the simulation that finds them, are listed in
+[doc/parser-simulation.md](doc/parser-simulation.md).
 
 ## How it compares
 

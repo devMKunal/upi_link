@@ -10,6 +10,10 @@
   `/` after `pay`, trims whitespace, and reads HTML-escaped `&amp;`.
 - A supported key repeated with the same value is accepted; different values
   still throw.
+- An unencoded `&` inside a value (`pn=A&B%20Traders`) is read as part of the
+  value instead of failing the link.
+- Add `tool/simulate.dart`, a parser simulation (round trip, real-world
+  variants, fuzz), and record known limitations in `doc/parser-simulation.md`.
 
 ## 0.1.1
 
