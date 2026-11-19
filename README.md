@@ -88,12 +88,37 @@ try {
 `cu=INR` is always written. When parsing, `cu` may be absent but must be `INR`
 if present.
 
-## Strict parsing
+## Parsing real QR codes
 
-`UpiLink.parse` rejects anything outside the table above, including unknown or
-repeated keys. Many bank-issued merchant QR codes carry extra keys such as
-`mode`, `orgid`, `sign` or `purpose`, so this version will reject them. Support
-for those keys may be added later; doing so will not break existing code.
+QR codes from UPI apps often carry keys beyond the 8 supported fields, such as
+`mode`, `purpose`, `orgid`, `sign`, or app-specific keys. `UpiLink.parse` keeps
+those in `extraParameters` instead of rejecting the link, and writes them back
+out in `toString()`, so a scanned link can be re-shared without losing data.
+
+```dart
+final link = UpiLink.parse(
+  'upi://pay?pa=9876543210@axl&pn=Test%20User&mc=0000&mode=02&purpose=00',
+);
+print(link.payeeName);       // Test User
+print(link.extraParameters); // {mode: 02, purpose: 00}
+```
+
+`parse` also tolerates other things real apps and copy-paste produce:
+
+| Input | How it is read |
+| --- | --- |
+| `am=` (empty value) | As if `am` were absent |
+| `PA=`, `Pn=` | Same as `pa`, `pn` |
+| `cu=inr` | Same as `cu=INR` |
+| `&&` or a trailing `&` | Ignored |
+| `upi://pay/?...` | Same as `upi://pay?...` |
+| `&amp;` (copied from HTML) | Read as `&` |
+| Leading/trailing whitespace | Trimmed |
+
+It still throws a `FormatException` for links it cannot read safely: a missing
+`pa` or `pn`, a currency other than INR, a supported key repeated with different
+values, malformed percent-encoding, or an invalid address, amount, merchant
+code or URL.
 
 ## How it compares
 

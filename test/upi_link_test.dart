@@ -227,11 +227,12 @@ void main() {
       'has user info': 'upi://u@pay?pa=a@ybl&pn=A',
       'no query': 'upi://pay',
       'empty query': 'upi://pay?',
-      'empty segment': 'upi://pay?pa=a@ybl&&pn=A',
-      'segment without =': 'upi://pay?pa=a@ybl&pn',
+      'pn without a value': 'upi://pay?pa=a@ybl&pn',
+      'empty pa': 'upi://pay?pa=&pn=A',
       'empty key': 'upi://pay?pa=a@ybl&pn=A&=x',
-      'unknown key': 'upi://pay?pa=a@ybl&pn=A&mode=02',
-      'duplicate key': 'upi://pay?pa=a@ybl&pn=A&pn=B',
+      'bad characters in a key': 'upi://pay?pa=a@ybl&pn=A&mo%20de=1',
+      'conflicting duplicate key': 'upi://pay?pa=a@ybl&pn=A&pn=B',
+      'lower-case non-INR currency': 'upi://pay?pa=a@ybl&pn=A&cu=usd',
       'missing pa': 'upi://pay?pn=A',
       'missing pn': 'upi://pay?pa=a@ybl',
       'non-INR currency': 'upi://pay?pa=a@ybl&pn=A&cu=USD',
@@ -250,6 +251,147 @@ void main() {
 
     test('tryParse returns the link on valid input', () {
       expect(UpiLink.tryParse(full().toString()), full());
+    });
+  });
+
+  group('real-world QR codes', () {
+    // Shapes copied from QR codes produced by common UPI apps.
+    // All addresses, names and ids below are made up.
+    final fixtures = {
+      'personal QR with mode and purpose':
+          'upi://pay?pa=9876543210@axl&pn=TEST%20%20USER&mc=0000&mode=02&purpose=00',
+      'GPay merchant QR with vendor keys':
+          'upi://pay?pa=gpay-11111111111@okbizaxis&mc=5411&pn=Test%20Merchant'
+              '&oobe=fos123&qrst=snp&tr=1111111111&cu=INR&ver=01&mode=01',
+      'Paytm-style QR with orgid and sign':
+          'upi://pay?pa=paytmqr1111@paytm&pn=Test%20Shop&mc=5499&mode=02'
+              '&orgid=000000&paytmqr=1111ABCD&sign=MEUCIQ',
+      'GPay personal QR with aid':
+          'upi://pay?pa=test.user@okhdfcbank&pn=Test%20User&aid=uGICAgICAgA',
+      'signed dynamic QR with mam':
+          'upi://pay?pa=shop@icici&pn=Shop&tr=EZV2024&am=250.00&mam=250.00&cu=INR&mode=15',
+      'minimal Paytm QR': 'upi://pay?pa=paytm.test123@pty&pn=Paytm',
+    };
+
+    fixtures.forEach((name, source) {
+      test('parses $name', () {
+        expect(UpiLink.tryParse(source), isNotNull);
+      });
+    });
+
+    test('keeps unknown keys in order', () {
+      final link =
+          UpiLink.parse(fixtures['GPay merchant QR with vendor keys']!);
+      expect(
+          link.extraParameters.keys.toList(), ['oobe', 'qrst', 'ver', 'mode']);
+      expect(link.extraParameters['mode'], '01');
+      expect(link.merchantCode, '5411');
+      expect(link.transactionRef, '1111111111');
+    });
+
+    test('round-trips links that carry extra keys', () {
+      for (final source in fixtures.values) {
+        final link = UpiLink.parse(source);
+        expect(UpiLink.parse(link.toString()), link);
+      }
+    });
+
+    test('writes extra keys after the supported ones', () {
+      final link = UpiLink.parse('upi://pay?mode=02&pa=a@ybl&pn=A');
+      expect(link.toString(), 'upi://pay?pa=a@ybl&pn=A&cu=INR&mode=02');
+    });
+
+    test('treats an empty supported value as absent', () {
+      final link = UpiLink.parse('upi://pay?pa=a@ybl&pn=A&am=&tn=&cu=INR');
+      expect(link.amount, isNull);
+      expect(link.transactionNote, isNull);
+    });
+
+    test('keeps an extra key without a value', () {
+      final link = UpiLink.parse('upi://pay?pa=a@ybl&pn=A&flag');
+      expect(link.extraParameters, {'flag': ''});
+    });
+
+    test('first value wins for a repeated extra key', () {
+      final link = UpiLink.parse('upi://pay?pa=a@ybl&pn=A&mode=01&mode=02');
+      expect(link.extraParameters, {'mode': '01'});
+    });
+
+    test('accepts a repeated supported key with the same value', () {
+      expect(UpiLink.parse('upi://pay?pa=a@ybl&pn=A&pn=A').payeeName, 'A');
+    });
+
+    test('matches supported keys case-insensitively', () {
+      final link = UpiLink.parse('upi://pay?PA=a@ybl&Pn=A&AM=10&cu=inr');
+      expect(link.payeeAddress, 'a@ybl');
+      expect(link.amount, '10');
+      expect(link.extraParameters, isEmpty);
+    });
+
+    test('ignores empty segments, a trailing slash and whitespace', () {
+      expect(UpiLink.parse('upi://pay?pa=a@ybl&&pn=A&').payeeName, 'A');
+      expect(UpiLink.parse('upi://pay/?pa=a@ybl&pn=A').payeeName, 'A');
+      expect(UpiLink.parse('  upi://pay?pa=a@ybl&pn=A\n').payeeName, 'A');
+    });
+
+    test('reads HTML-escaped separators', () {
+      final link = UpiLink.parse('upi://pay?pa=a@ybl&amp;pn=A&amp;mode=02');
+      expect(link.payeeName, 'A');
+      expect(link.extraParameters, {'mode': '02'});
+    });
+  });
+
+  group('extraParameters', () {
+    test('defaults to empty and is unmodifiable', () {
+      expect(minimal().extraParameters, isEmpty);
+      final link = UpiLink(
+        payeeAddress: 'a@ybl',
+        payeeName: 'A',
+        extraParameters: {'mode': '02'},
+      );
+      expect(() => link.extraParameters['x'] = 'y', throwsUnsupportedError);
+    });
+
+    test('is copied, so later changes to the source map have no effect', () {
+      final source = {'mode': '02'};
+      final link = UpiLink(
+          payeeAddress: 'a@ybl', payeeName: 'A', extraParameters: source);
+      source['mode'] = '99';
+      expect(link.extraParameters['mode'], '02');
+    });
+
+    test('encodes values', () {
+      final link = UpiLink(
+        payeeAddress: 'a@ybl',
+        payeeName: 'A',
+        extraParameters: {'note2': 'a b&c'},
+      );
+      expect(link.toString(), endsWith('&note2=a%20b%26c'));
+    });
+
+    for (final key in ['', 'a b', 'x=y', 'pa', 'PN', 'cu']) {
+      test('rejects key "$key"', () {
+        expect(
+          () => UpiLink(
+            payeeAddress: 'a@ybl',
+            payeeName: 'A',
+            extraParameters: {key: '1'},
+          ),
+          throwsA(isA<UpiLinkException>()
+              .having((e) => e.field, 'field', 'extraParameters')),
+        );
+      });
+    }
+
+    test('takes part in equality, ignoring order', () {
+      UpiLink withExtras(Map<String, String> extras) => UpiLink(
+          payeeAddress: 'a@ybl', payeeName: 'A', extraParameters: extras);
+      expect(
+          withExtras({'a': '1', 'b': '2'}), withExtras({'b': '2', 'a': '1'}));
+      expect(withExtras({'a': '1', 'b': '2'}).hashCode,
+          withExtras({'b': '2', 'a': '1'}).hashCode);
+      expect(withExtras({'a': '1'}), isNot(withExtras({'a': '2'})));
+      expect(withExtras({'a': '1'}), isNot(withExtras({'a': '1', 'b': '2'})));
     });
   });
 
